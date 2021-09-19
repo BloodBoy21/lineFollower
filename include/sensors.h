@@ -2,6 +2,17 @@
 #define __SENSOR_H__
 #include <Arduino.h>
 #include <motor.h>
+extern int trigger, echo;
+extern bool isAnObstacle;
+
+int get_distance();
+
+struct pidS {
+  int P;
+  int I;
+  int D;
+  int oldError = 0;
+};
 
 struct sensors {
   int sLine0;
@@ -12,6 +23,7 @@ struct sensors {
 };
 class LineSensor {
  private:
+  int Kp = 0, Ki = 0, Kd = 0;
   sensors liSensorS;
   Car* lilFord;
   int directionCases[16] = {0};
@@ -21,12 +33,17 @@ class LineSensor {
   const int casesToLeft[4] = {4, 7, 8, 11};
   const int casesToRight[4] = {1, 2, 13, 14};
   const int* insertionCases[5] = {casesToGo, casesToStop, casesToLeft, casesToRight, specialCases};
+  pidS PID = {};
+  bool lineChanged = false;
   int read_sensors();
   void create_cases();
+  float calculate_pid(int);
+  int get_error(int);
 
  public:
-  LineSensor(sensors _sensors, Car* _car);
+  LineSensor(sensors, Car*);
   void change_direction();
+  void radar();
 };
 
 #endif

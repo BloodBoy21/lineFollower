@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <motor.h>
-
+int speed_converter(int speed) {
+  return map(speed, 0, 100, 0, 65535);
+}
 Motor::Motor(int sideA, int sideB) {
   a = sideA, b = sideB;
   pinMode(a, OUTPUT);

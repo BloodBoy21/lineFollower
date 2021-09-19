@@ -1,9 +1,21 @@
 #include <Arduino.h>
+#define DEBUG true
+#include <sensors.h>
+int trigger = PB10;
+int echo = PB11;
 
+sensors lineSensorS = {PA8, PA12, PB12, 1};
+Motor motorA = {PB9, PB8};
+Motor motorB = {PB7, PB6};
+Car robotS = {&motorA, &motorB};
+LineSensor robotWithSensor = {lineSensorS, &robotS};
 void setup() {
-  // put your setup code here, to run once:
+  Serial.begin(9600);
+  pinMode(trigger, OUTPUT);
+  pinMode(echo, INPUT);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  robotWithSensor.change_direction();
+  robotWithSensor.radar();
 }

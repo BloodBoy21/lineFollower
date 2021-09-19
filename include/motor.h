@@ -1,7 +1,7 @@
 #ifndef __MOTOR__H
 #define __MOTOR__H
 #include <Arduino.h>
-int speed_converter(int);
+int speed_converter(int speed);
 class Motor {
  private:
   int a, b;
@@ -12,37 +12,38 @@ class Motor {
   void back(int);
   void stop();
 };
+struct Speed {
+  int speedA;
+  int speedB;
+};
+
 struct Car {
   Motor *wheelA;
   Motor *wheelB;
+  Speed speedControlS;
+  void set_speed(Speed _speedControl) {
+    speedControlS = _speedControl;
+  }
   void stop() {
     wheelA->stop();
     wheelB->stop();
   }
-  void go(int speed = 100) {
-    speed = speed_converter(speed);
-    wheelA->go(speed);
-    wheelB->go(speed);
+  void go() {
+    wheelA->go(speed_converter(speedControlS.speedA));
+    wheelB->go(speed_converter(speedControlS.speedB));
   }
-  void back(int speed = 100) {
-    speed = speed_converter(speed);
-    wheelA->back(speed);
-    wheelB->back(speed);
+  void back() {
+    wheelA->back(speed_converter(speedControlS.speedA));
+    wheelB->back(speed_converter(speedControlS.speedB));
   }
-  void right(int speed = 100) {
-    speed = speed_converter(speed);
-    wheelB->back(speed);
-    wheelA->go(speed);
+  void right() {
+    wheelA->go(speed_converter(speedControlS.speedA));
+    wheelB->back(speed_converter(speedControlS.speedB));
   }
-  void left(int speed = 100) {
-    speed = speed_converter(speed);
-    wheelA->back(speed);
-    wheelB->go(speed);
+  void left() {
+    wheelA->back(speed_converter(speedControlS.speedA));
+    wheelB->go(speed_converter(speedControlS.speedB));
   }
 };
-
-int speed_converter(int speed) {
-  return map(speed, 0, 100, 0, 65535);
-}
 
 #endif
