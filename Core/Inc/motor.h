@@ -13,9 +13,9 @@
 class Motor{
 private:
 	uint32_t A,B;
-	TIM_HandleTypeDef timer;
+	TIM_HandleTypeDef *timer;
 public:
-	Motor(uint32_t,uint32_t,TIM_HandleTypeDef );
+	Motor(uint32_t,uint32_t,TIM_HandleTypeDef* );
 	void go(int);
 	void back(int);
 	void stop();

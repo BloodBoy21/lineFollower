@@ -54,7 +54,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
-
+void timer2_handler(TIM_HandleTypeDef*);
+int get_distance();
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */

@@ -19,7 +19,6 @@ struct IRpins {
 	STMPIN IR3;
 	STMPIN IR4;
 	STMPIN pinArray[4]={IR1,IR2,IR3,IR4};
-
 };
 
 class Car {

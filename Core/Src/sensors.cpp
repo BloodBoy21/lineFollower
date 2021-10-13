@@ -5,14 +5,12 @@
  *      Author: death
  */
 #include "stm32f1xx_hal.h"
-#include <cstdio>
-#include<math.h>
 #include "sensors.h"
+#include <string.h>
+#include<cmath>
+
 #define V_MAX 180
 #define V_MIN 80
-int distance = 0;
-extern STMPIN echo;
-extern STMPIN trig;
 extern TIM_HandleTypeDef htim2;
 Car::Car(Motor *_A, Motor *_B) {
 	motorA = _A;
@@ -38,7 +36,10 @@ void Car::right() {
 	motorA->back(carSpeed.speedA);
 	motorB->go(carSpeed.speedB);
 }
-void Car::go_back(){}
+void Car::go_back() {
+	motorA->go(carSpeed.speedA);
+	motorB->back(carSpeed.speedB);
+}
 
 /* Car with sensors */
 CarIR::CarIR(Motor *_A, Motor *_B, IRpins _pins) :
@@ -50,7 +51,7 @@ int CarIR::read_sensors() {
 	for (int i = 3; i >= 0; i++) {
 		if (HAL_GPIO_ReadPin(lineDetector.pinArray[i].port,
 				lineDetector.pinArray[i].pin)) {
-			status += pow(2, i);
+			status += pow(2, i + 1);
 		}
 	}
 	return status;
@@ -87,50 +88,9 @@ void CarIR::run() {
 		stop();
 
 }
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
-	uint32_t icVal1 = 0;
-	uint32_t icVal2 = 0;
-	uint32_t difference = 0;
-	bool wasCaptured = 0;
-	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4) // if the interrupt source is channel1
-			{
-		if (wasCaptured == 0) // if the first value is not captured
-				{
-			icVal1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4); // read the first value
-			wasCaptured = 1;  // set the first captured as true
-			// Now change the polarity to falling edge
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_4,
-					TIM_INPUTCHANNELPOLARITY_FALLING);
-		}
 
-		else if (wasCaptured == 1)   // if the first is already captured
-				{
-			icVal2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_4); // read second value
-			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
-
-			if (icVal2 > icVal1) {
-				difference = icVal2 - icVal1;
-			}
-
-			else if (icVal1 > icVal2) {
-				difference = (0xffff - icVal1) + icVal2;
-			}
-
-			distance = difference * .034 / 2;
-			wasCaptured = 0; // set it back to false
-
-			// set polarity to rising edge
-			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_4,
-					TIM_INPUTCHANNELPOLARITY_RISING);
-			__HAL_TIM_DISABLE_IT(&htim2, TIM_IT_CC1);
-		}
-	}
-}
-int get_distance() {
-	HAL_GPIO_WritePin(trig.port, trig.pin, GPIO_PIN_SET); // pull the TRIG pin HIGH
-	HAL_Delay(0.01);  // wait for 10 us
-	HAL_GPIO_WritePin(trig.port, trig.pin, GPIO_PIN_RESET); // pull the TRIG pin low
-	__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_CC1);
-	return distance;
+void uart_printl(UART_HandleTypeDef *huart, char data[]) {
+	HAL_UART_Transmit(huart, (uint8_t*) data, strlen(data), 1000);
+	HAL_UART_Transmit(huart, (uint8_t*) "\n", strlen("\n"), 1000);
 }
 
