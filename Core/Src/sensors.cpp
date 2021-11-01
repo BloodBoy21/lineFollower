@@ -7,11 +7,13 @@
 #include "stm32f1xx_hal.h"
 #include "sensors.h"
 #include <string.h>
+#include <stdio.h>
 #include<cmath>
-
-#define V_MAX 180
-#define V_MIN 80
+#define debug true
+#define V_MAX 2000
+#define V_MIN 1200
 extern TIM_HandleTypeDef htim2;
+extern UART_HandleTypeDef huart1;
 Car::Car(Motor *_A, Motor *_B) {
 	motorA = _A;
 	motorB = _B;
@@ -36,10 +38,6 @@ void Car::right() {
 	motorA->back(carSpeed.speedA);
 	motorB->go(carSpeed.speedB);
 }
-void Car::go_back() {
-	motorA->go(carSpeed.speedA);
-	motorB->back(carSpeed.speedB);
-}
 
 /* Car with sensors */
 CarIR::CarIR(Motor *_A, Motor *_B, IRpins _pins) :
@@ -48,7 +46,7 @@ CarIR::CarIR(Motor *_A, Motor *_B, IRpins _pins) :
 }
 int CarIR::read_sensors() {
 	int status = 0;
-	for (int i = 3; i >= 0; i++) {
+	for (int i = 0; i < 4; ++i) {
 		if (HAL_GPIO_ReadPin(lineDetector.pinArray[i].port,
 				lineDetector.pinArray[i].pin)) {
 			status += pow(2, i + 1);
@@ -58,14 +56,27 @@ int CarIR::read_sensors() {
 }
 int CarIR::read_error() {
 	int error = 0;
+#ifdef debug
+	char buffer[20];
+#endif
 	for (int i = 0; i < 4; i++) {
 		STMPIN ir = lineDetector.pinArray[i];
+		int status = HAL_GPIO_ReadPin(ir.port, ir.pin);
+#ifdef debug
+		sprintf(buffer, "status of %d:%d", i, status);
+		uart_println(&huart1, buffer);
+		memset(buffer, 0, 20);
+#endif
 		if (i < 2) {
-			error += HAL_GPIO_ReadPin(ir.port, ir.pin) * i + 1;
+			error += status * (i + 1);
 		} else {
-			error += -(HAL_GPIO_ReadPin(ir.port, ir.pin) * i - 1);
+			error -= (status * (i - 1));
 		}
 	}
+#ifdef debug
+	sprintf(buffer, "Error:%d", error);
+	uart_println(&huart1, buffer);
+#endif
 	return error;
 }
 
@@ -82,14 +93,21 @@ void CarIR::run() {
 	int sensorsRead = read_sensors();
 	float pidValue = calculate_PID(read_error());
 	carSpeed = { int(vBase + pidValue), int(vBase - pidValue) };
-	if (sensorsRead != 6)
+#ifdef debug
+	char buffer[50];
+	sprintf(buffer, "pid:%.2f\nSpeed:{%d,%d}", pidValue, carSpeed.speedA,
+			carSpeed.speedB);
+	uart_println(&huart1, buffer);
+#endif
+	if (sensorsRead != 6) {
 		go();
-	else
+	} else {
 		stop();
+	}
 
 }
 
-void uart_printl(UART_HandleTypeDef *huart, char data[]) {
+void uart_println(UART_HandleTypeDef *huart, char data[]) {
 	HAL_UART_Transmit(huart, (uint8_t*) data, strlen(data), 1000);
 	HAL_UART_Transmit(huart, (uint8_t*) "\n", strlen("\n"), 1000);
 }

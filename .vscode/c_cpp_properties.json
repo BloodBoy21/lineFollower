@@ -1,0 +1,13 @@
+{
+  "configurations": [
+    {
+      "name": "STM32",
+      "includePath": [
+        "Core/Inc"
+      ],
+      "defines": [],
+      "compilerPath": "C:\\PROGRAM FILES (X86)\\GNU ARM EMBEDDED TOOLCHAIN\\10 2021.07\\BIN\\ARM-NONE-EABI-G++.EXE"
+    }
+  ],
+  "version": 4
+}
