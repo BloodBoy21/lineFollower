@@ -25,7 +25,6 @@ public:
 	void go(int);
 	void back(int);
 	void stop();
-	void set_pins(MotorpinS);
 };
 
 

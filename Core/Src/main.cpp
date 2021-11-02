@@ -23,6 +23,7 @@
 #include "stm_delay.h"
 #include <stdio.h>
 #include <string.h>
+#include <map>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -57,13 +58,15 @@ static void MX_GPIO_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART1_UART_Init(void);
+void data_to_pid(char[]);
+void read_hc05();
 /* USER CODE BEGIN PFP */
 IRpins lineSensorS = { { GPIOA, GPIO_PIN_8 }, { GPIOA, GPIO_PIN_12 }, { GPIOB,
 GPIO_PIN_12 }, { GPIOB, GPIO_PIN_14 } };
 
-Motor motorA(TIM_CHANNEL_4, TIM_CHANNEL_3, &htim4);
-Motor motorB(TIM_CHANNEL_2, TIM_CHANNEL_1, &htim4);
-CarIR lilRobot(&motorA, &motorB, lineSensorS);
+Motor motorA(TIM_CHANNEL_2, TIM_CHANNEL_1, &htim4);
+Motor motorB(TIM_CHANNEL_4, TIM_CHANNEL_3, &htim4);
+CarIR lilRobot (&motorA, &motorB, lineSensorS);
 STMPIN echo = { GPIOB, GPIO_PIN_11 };
 STMPIN trig = { GPIOB, GPIO_PIN_10 };
 /* USER CODE END PFP */
@@ -111,8 +114,6 @@ int main(void) {
 	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim4,TIM_CHANNEL_1);
 	HAL_TIM_OC_Start_IT(&htim2, TIM_CHANNEL_4);
-	motorA.set_pins( { GPIO_PIN_9, GPIO_PIN_8 });
-	motorB.set_pins( { GPIO_PIN_7, GPIO_PIN_6 });
 	/* USER CODE END 2 */
 	if (DWT_Delay_Init()) {
 		Error_Handler();
@@ -122,20 +123,53 @@ int main(void) {
 	HAL_Delay(5000);
 	while (1) {
 		get_distance();
+		read_hc05();
 		char buffer[100];
-		sprintf(buffer, "distance:%d", int(distance));
+		sprintf(buffer, "Distance:%d", int(distance));
 		uart_println(&huart1, buffer);
 		lilRobot.run();
-		/*	if (distance> 0 &&  distance < 20 ) {
-		 lilRobot.carSpeed = { 199, 199 };
-		 lilRobot.stop();
-		 HAL_Delay(200);
-		 lilRobot.go_back();
-		 HAL_Delay(500);
-		 lilRobot.stop();
-		 }*/
+		if (distance> 0 &&  distance < 20 ) {
+			lilRobot.comeback();
+		 }
 	}
 	/* USER CODE END 3 */
+}
+void read_hc05(){
+	char buffer[100]={0};
+	HAL_UART_Receive(&huart1,(uint8_t*) buffer, 100, 4000);
+	if (buffer[0] != '\0'){
+		uart_println(&huart1, (char*)"Data received:");
+		uart_println(&huart1, buffer);
+		uart_println(&huart1, (char*)"");
+		data_to_pid(buffer);
+		memset(buffer, 0, 100);
+		sprintf(buffer,"p:%.2f, i:%.2f, d:%.2f",lilRobot.Kp,lilRobot.Ki,lilRobot.Kd);
+		uart_println(&huart1, buffer);
+	}
+}
+void data_to_pid(char data[]){
+	std::map<char,float*> pidVars={{'p',&lilRobot.Kp},{'i',&lilRobot.Ki},{'d',&lilRobot.Kd}};
+	auto dataLen = strlen(data);
+	for(unsigned int i=0;i<dataLen;i++){
+	char c = data[i];
+	if ( pidVars.find(c) != pidVars.end() ) {
+		uart_println(&huart1, (char*)"Find:"+c);
+		char value[10];
+		int addr =0;
+		for(unsigned int j=i+2;j<dataLen;j++ ){
+			char n = data[j];
+			if(isalnum(n)){
+				value[addr]=n;
+				addr++;
+			}
+			else{
+				float valueF = atoff(value);
+				*(pidVars.find(c)->second)= valueF;
+				break;
+			}
+		}
+	}
+	}
 }
 void timer2_handler(TIM_HandleTypeDef *htim) {
 	uint32_t IC_Val1 = 0;

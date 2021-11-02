@@ -25,8 +25,6 @@ void Motor::stop(){
 	__HAL_TIM_SET_COMPARE(timer,A,0);
 
 }
-void Motor::set_pins(MotorpinS _pins){
-	pins = _pins;
-}
+
 
 

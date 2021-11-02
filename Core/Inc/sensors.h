@@ -9,6 +9,7 @@ typedef struct {
 	GPIO_TypeDef *port;
 	uint16_t pin;
 } STMPIN;
+bool read_pin(STMPIN pin);
 struct speed {
 	int speedA;
 	int speedB;
@@ -24,9 +25,8 @@ struct IRpins {
 };
 
 class Car {
-private:
-	Motor *motorA, *motorB;
 public:
+	Motor *motorA, *motorB;
 	Car(Motor*, Motor*);
 	void go();
 	void back();
@@ -38,17 +38,18 @@ public:
 
 class CarIR: public Car {
 private:
-	float Kp = 100, Ki = 20, Kd = 0.4;
-	float P = 1, I = 0, D = 0;
-	float vBase;
+	float P = 0, I = 1, D = 0;
+	float vBase=0;
 	int oldError = 0;
 	IRpins lineDetector;
 	int read_error();
 	float calculate_PID(int);
 	int read_sensors();
 public:
+	float Kp = 200, Ki = 0, Kd =(Kp-1)*10;
 	CarIR(Motor*, Motor*, IRpins);
 	void run();
+	void  comeback();
 };
 
 #endif

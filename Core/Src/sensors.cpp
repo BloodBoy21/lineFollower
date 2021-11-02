@@ -9,9 +9,8 @@
 #include <string.h>
 #include <stdio.h>
 #include<cmath>
-#define debug true
-#define V_MAX 2000
-#define V_MIN 1200
+#define V_MAX 1900
+#define V_MIN 1100
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart1;
 Car::Car(Motor *_A, Motor *_B) {
@@ -42,7 +41,7 @@ void Car::right() {
 /* Car with sensors */
 CarIR::CarIR(Motor *_A, Motor *_B, IRpins _pins) :
 		Car(_A, _B) {
-	lineDetector = _pins;
+		lineDetector = _pins;
 }
 int CarIR::read_sensors() {
 	int status = 0;
@@ -56,21 +55,22 @@ int CarIR::read_sensors() {
 }
 int CarIR::read_error() {
 	int error = 0;
+	STMPIN sensorError[4] = {lineDetector.IR1,lineDetector.IR2,lineDetector.IR4,lineDetector.IR3};
 #ifdef debug
 	char buffer[20];
 #endif
 	for (int i = 0; i < 4; i++) {
-		STMPIN ir = lineDetector.pinArray[i];
+		STMPIN ir = sensorError[i];
 		int status = HAL_GPIO_ReadPin(ir.port, ir.pin);
 #ifdef debug
 		sprintf(buffer, "status of %d:%d", i, status);
 		uart_println(&huart1, buffer);
 		memset(buffer, 0, 20);
 #endif
-		if (i < 2) {
-			error += status * (i + 1);
+		if (!i+1%2) {
+			error += i==1?status *1:status*-1;
 		} else {
-			error -= (status * (i - 1));
+			error += i==0?status *2:status*-2;
 		}
 	}
 #ifdef debug
@@ -81,16 +81,15 @@ int CarIR::read_error() {
 }
 
 float CarIR::calculate_PID(int error) {
-	float Kv = 0.7;
+	float Kv = 0.6;
 	P = error;
-	I = (I + P) * ((I * P) > 0);
+	I += P;
 	D = error - oldError;
 	oldError = error;
 	vBase = V_MIN + (V_MAX - V_MIN) * exp(-Kv * abs(P * Kp));
 	return (Kp * P) + (Ki * I) + (Kd * D);
 }
 void CarIR::run() {
-	int sensorsRead = read_sensors();
 	float pidValue = calculate_PID(read_error());
 	carSpeed = { int(vBase + pidValue), int(vBase - pidValue) };
 #ifdef debug
@@ -99,12 +98,27 @@ void CarIR::run() {
 			carSpeed.speedB);
 	uart_println(&huart1, buffer);
 #endif
-	if (sensorsRead != 6) {
-		go();
-	} else {
+	if (read_pin(lineDetector.IR2)&&read_pin(lineDetector.IR3)) {
 		stop();
+	} else {
+		go();
 	}
 
+}
+void CarIR::comeback(){
+	carSpeed = {MAX_SPEED,MAX_SPEED};
+	stop();
+	back();
+	HAL_Delay(300);
+	motorA->go(MAX_SPEED);
+	motorB->back(MAX_SPEED/3);
+	HAL_Delay(400);
+	go();
+
+}
+
+bool read_pin(STMPIN pin){
+	return HAL_GPIO_ReadPin(pin.port, pin.pin);
 }
 
 void uart_println(UART_HandleTypeDef *huart, char data[]) {
